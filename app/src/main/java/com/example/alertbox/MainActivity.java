@@ -13,11 +13,58 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
+
+    String mapKey = "mapKey";
+
+    // initialise the list items for the alert dialog
+//    final String[] listItems = new String[]{"Anemia", "Appetite", "Arthritis", "AutoImmune", "Beh health", "Blood Pressure", "Brain", "Chronic Kidney Disease", "Circulation", "Diabetes", "Dialysis", "Eyes", "Fever", "GI", "Heart", "Heart Failure", "Immune Suppression", "Infection", "Kidney", "Lipid", "Liver", "Memory", "Migraine", "Nerves", "OTHER", "Pain", "Prostate", "Skin", "Stomach", "Transplant", "Ulcers", "Weight"};
+
+    final String[] listItems = new String[]{"Heart Failure",
+            "Immune Suppression",
+            "Infection",
+            "Kidney",
+            "Lipid",
+            "Liver",
+            "Memory",
+            "Anemia",
+            "Fever",
+            "Appetite",
+            "Arthritis",
+            "AutoImmune",
+            "Beh health",
+            "Blood Pressure",
+            "Brain",
+            "GI",
+            "Heart",
+            "Migraine",
+            "Weight",
+            "OTHER",
+            "Pain",
+            "Prostate",
+            "Skin",
+            "Stomach",
+            "Transplant",
+            "Ulcers",
+            "Chronic Kidney Disease",
+            "Circulation",
+            "Diabetes",
+            "Dialysis",
+            "Eyes",
+            "Nerves"};
+
+    final boolean[] checkedItems = new boolean[listItems.length];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,9 +75,7 @@ public class MainActivity extends AppCompatActivity {
         Button bOpenAlertDialog = findViewById(R.id.openAlertDialogButton);
         final TextView tvSelectedItemsPreview = findViewById(R.id.selectedItemPreview);
 
-        // initialise the list items for the alert dialog
-        final String[] listItems = new String[]{"1", "2", "3", "4","5", "6", "7", "8","9", "10", "11", "12","13", "14", "15", "16","17", "18", "19", "20"};
-        final boolean[] checkedItems = new boolean[listItems.length];
+
 
         // copy the items from the main list to the selected item list
         // for the preview if the item is checked then only the item
@@ -42,8 +87,33 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
+                try {
+                    Map<String, Object> stringObjectMap = loadMap();
+
+                    //----------------------------------------------------------------
+                    Log.i("display_map", ""+stringObjectMap.size());
+                    SharedPreferences pSharedPref = getApplicationContext().getSharedPreferences("MyVariables",
+                            Context.MODE_PRIVATE);
+                    Set keys = stringObjectMap.keySet();
+                    for (Iterator i = keys.iterator(); i.hasNext(); ) {
+                        String key = (String) i.next();
+                        String jsonString = pSharedPref.getString(mapKey, (new JSONObject()).toString());
+                        JSONObject jsonObject = new JSONObject(jsonString);
+                        String value = (String) stringObjectMap.get(jsonObject.get(key));
+
+                        int index = getArrayIndex(listItems, value);
+                        checkedItems[index] = true;
+                        
+                        Log.i("display_map", i+") "+value);
+                    }
+
+                    //----------------------------------------------------------------
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
                 // initially set the null for the text preview
-                tvSelectedItemsPreview.setText(null);
+//                tvSelectedItemsPreview.setText(null);
 
                 // initialise the alert dialog builder
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
@@ -60,8 +130,6 @@ public class MainActivity extends AppCompatActivity {
                     public void onClick(DialogInterface dialog, int which, boolean isChecked) {
                         checkedItems[which] = isChecked;
 
-                        saveArray(checkedItems,getApplicationContext());
-
                         String currentItem = selectedItems.get(which);
                     }
                 });
@@ -74,13 +142,18 @@ public class MainActivity extends AppCompatActivity {
                     @SuppressLint("SetTextI18n")
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                        Map<String, Object> inputMap = new HashMap<>();
                         for (int i = 0; i < checkedItems.length; i++) {
                             if (checkedItems[i]) {
-//                                tvSelectedItemsPreview.setText(tvSelectedItemsPreview.getText() + selectedItems.get(i) + ", ");
+                                tvSelectedItemsPreview.setText(tvSelectedItemsPreview.getText() + selectedItems.get(i) + ", ");
+                                inputMap.put(listItems[i], listItems[i]);
                             }
-                            tvSelectedItemsPreview.setText(i+") "+tvSelectedItemsPreview.getText()+" "+checkedItems[i]);
-
+//                            tvSelectedItemsPreview.setText(i+") "+tvSelectedItemsPreview.getText()+" "+checkedItems[i]);
                         }
+                        saveMap(inputMap);
+
+
+                        saveArray(checkedItems,getApplicationContext());
 
                         getArray(getApplicationContext());
 
@@ -153,5 +226,57 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
+
+//==================================================================================================
+private void saveMap(Map<String, Object> inputMap) {
+    SharedPreferences pSharedPref = getApplicationContext().getSharedPreferences("MyVariables",
+            Context.MODE_PRIVATE);
+    if (pSharedPref != null) {
+        JSONObject jsonObject = new JSONObject(inputMap);
+        String jsonString = jsonObject.toString();
+        SharedPreferences.Editor editor = pSharedPref.edit();
+        editor.remove(mapKey).apply();
+        editor.putString(mapKey, jsonString);
+        editor.commit();
+    }
+}
+    private Map<String, Object> loadMap() throws JSONException {
+        Map<String, Object> outputMap = new HashMap<>();
+        SharedPreferences pSharedPref = getApplicationContext().getSharedPreferences("MyVariables",
+                Context.MODE_PRIVATE);
+        try {
+            if (pSharedPref != null) {
+                String jsonString = pSharedPref.getString(mapKey, (new JSONObject()).toString());
+                JSONObject jsonObject = new JSONObject(jsonString);
+                Iterator<String> keysItr = jsonObject.keys();
+                while (keysItr.hasNext()) {
+                    String key = keysItr.next();
+                    outputMap.put(key, jsonObject.get(key));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return outputMap;
+    }
+//==================================================================================================
+
+
+    //----------------------------------------------------------------------------------------------
+    public int getArrayIndex(String[] arr,String value) {
+
+        int k=0;
+        for(int i=0;i<arr.length;i++){
+
+            if(arr[i].equalsIgnoreCase(value)){
+                k=i;
+                break;
+            }
+        }
+        return k;
+    }
+    //----------------------------------------------------------------------------------------------
 
 }
